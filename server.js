@@ -2,21 +2,28 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: '*', // erlaubt alle Clients
+    methods: ['GET', 'POST']
+  }
+});
 
-const PORT = 3000;
+// Serverport Render automatisch, lokal 3000
+const PORT = process.env.PORT || 3000;
 
-// Spielkonstanten
+// --- Spielkonstanten ---
 const CELL_SIZE = 20;
 const WIDTH = 800;
 const HEIGHT = 600;
 const MAX_X = WIDTH / CELL_SIZE;
 const MAX_Y = HEIGHT / CELL_SIZE;
 
-// Spielzustand
+// --- Spielzustand ---
 let snakes = [
   [{ x: 5 * CELL_SIZE, y: 5 * CELL_SIZE }],
   [{ x: 30 * CELL_SIZE, y: 20 * CELL_SIZE }]
@@ -25,7 +32,7 @@ let directions = ['RIGHT', 'LEFT'];
 let scores = [0, 0];
 let food = randomFood();
 
-// Hilfsfunktionen
+// --- Hilfsfunktionen ---
 function randomFood() {
   return {
     x: Math.floor(Math.random() * MAX_X) * CELL_SIZE,
@@ -47,7 +54,7 @@ function moveSnake(snake, dir) {
   if (head.y >= HEIGHT) head.y = 0;
 
   snake.unshift(head);
-  // Essen?
+
   if (head.x === food.x && head.y === food.y) {
     return true;
   } else {
@@ -56,13 +63,13 @@ function moveSnake(snake, dir) {
   }
 }
 
-// Socket.IO Events
+// --- Socket.IO Events ---
 io.on('connection', (socket) => {
   console.log('Player connected:', socket.id);
 
   // Spieler-ID zuweisen (0 oder 1)
   let playerId = io.engine.clientsCount - 1;
-  if (playerId > 1) playerId = 1; // max 2 Spieler
+  if (playerId > 1) playerId = 1; 
   socket.emit('init', { playerId });
 
   // Richtung ändern
@@ -72,7 +79,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Player disconnected:', socket.id);
-    // Reset Spiel wenn Spieler weg ist
+    // Spiel zurücksetzen
     snakes = [
       [{ x: 5 * CELL_SIZE, y: 5 * CELL_SIZE }],
       [{ x: 30 * CELL_SIZE, y: 20 * CELL_SIZE }]
@@ -83,7 +90,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Game Loop
+// --- Game Loop ---
 setInterval(() => {
   snakes.forEach((snake, i) => {
     const ate = moveSnake(snake, directions[i]);
@@ -93,15 +100,14 @@ setInterval(() => {
     }
   });
 
-  // Einfacher Kollisionstest zwischen Schlangen (optional)
-  // ... kann man später erweitern
-
   io.emit('state', { snakes, food, scores });
-}, 150); // 150ms pro Tick ~ 6,6 FPS
+}, 150);
 
-// Express statische Dateien
-app.use(express.static(__dirname));
+// --- Statische Dateien (HTML/JS/CSS) ---
+app.use(express.static(path.join(__dirname, 'public')));
+// Falls du index.html direkt im Hauptordner hast, alternativ:
+// app.use(express.static(__dirname));
 
 server.listen(PORT, () => {
-  console.log(`Server läuft auf https://snake-multiplayer-server-ap5d.onrender.com`);
+  console.log(`Server läuft auf http://localhost:${PORT}`);
 });
