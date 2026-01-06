@@ -4,51 +4,72 @@
   <meta charset="UTF-8">
   <title>Snake Multiplayer</title>
   <style>
-    body { margin:0; }
-    canvas { background: black; display:block; margin:auto; }
+    body { margin:0; font-family: Arial, sans-serif; text-align:center; background:black; color:white; }
+    #home { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+    button { font-size: 24px; padding: 10px 20px; cursor:pointer; }
+    canvas { display:none; background:black; margin:auto; display:block; }
   </style>
 </head>
 <body>
+
+<!-- Homescreen -->
+<div id="home">
+  <h1>Snake Multiplayer</h1>
+  <button id="joinBtn">Join Game</button>
+</div>
+
+<!-- Spiel Canvas -->
 <canvas id="gameCanvas" width="800" height="600"></canvas>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const socket = io(); // Verbinden mit dem gleichen Server
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const CELL_SIZE = 20;
 
 let playerId = 0;
-let currentDir = 'RIGHT'; // für 180°-Verhinderung
-
+let currentDir = 'RIGHT';
 let snakes = [], food = {}, scores = [0,0];
 
-// --- Initialisierung ---
-socket.on('init', (data) => {
-  if(data.playerId === -1){
-    alert("Zu viele Spieler – du bist nur Zuschauer!");
-  } else {
-    playerId = data.playerId;
-  }
-});
+const home = document.getElementById('home');
+const joinBtn = document.getElementById('joinBtn');
 
-// --- Spielzustand empfangen ---
-socket.on('state', (data)=>{
-  snakes = data.snakes;
-  food = data.food;
-  scores = data.scores;
-  draw();
+let socket = null;
+
+// --- Homescreen Button ---
+joinBtn.addEventListener('click', () => {
+  home.style.display = 'none';
+  canvas.style.display = 'block';
+
+  // Socket.IO Verbindung jetzt starten
+  socket = io();
+
+  // Initialisierung
+  socket.on('init', (data) => {
+    if(data.playerId === -1){
+      alert("Zu viele Spieler – du bist nur Zuschauer!");
+    } else {
+      playerId = data.playerId;
+    }
+  });
+
+  // Spielzustand empfangen
+  socket.on('state', (data)=>{
+    snakes = data.snakes;
+    food = data.food;
+    scores = data.scores;
+    draw();
+  });
 });
 
 // --- Tasteneingaben ---
 document.addEventListener('keydown', e => {
-  if(playerId === -1) return; // Zuschauer können nichts steuern
+  if(!socket || playerId === -1) return; // Zuschauer oder noch nicht gestartet
   let dir = null;
-  if(e.key === 'ArrowUp' && currentDir !== 'DOWN') dir='UP';
-  if(e.key === 'ArrowDown' && currentDir !== 'UP') dir='DOWN';
-  if(e.key === 'ArrowLeft' && currentDir !== 'RIGHT') dir='LEFT';
-  if(e.key === 'ArrowRight' && currentDir !== 'LEFT') dir='RIGHT';
+  if(e.key==='ArrowUp' && currentDir!=='DOWN') dir='UP';
+  if(e.key==='ArrowDown' && currentDir!=='UP') dir='DOWN';
+  if(e.key==='ArrowLeft' && currentDir!=='RIGHT') dir='LEFT';
+  if(e.key==='ArrowRight' && currentDir!=='LEFT') dir='RIGHT';
   if(dir){
     currentDir = dir;
     socket.emit('direction', dir);
@@ -60,26 +81,21 @@ function draw(){
   ctx.fillStyle='black';
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  const colors = ['green','yellow'];
-  // Schlangen zeichnen
+  const colors=['green','yellow'];
   snakes.forEach((snake,i)=>{
-    ctx.fillStyle = colors[i % colors.length];
-    snake.forEach(seg=>{
-      ctx.fillRect(seg.x, seg.y, CELL_SIZE, CELL_SIZE);
-    });
+    ctx.fillStyle=colors[i % colors.length];
+    snake.forEach(seg=>ctx.fillRect(seg.x, seg.y, CELL_SIZE, CELL_SIZE));
   });
 
-  // Apfel
   ctx.fillStyle='red';
   ctx.fillRect(food.x, food.y, CELL_SIZE, CELL_SIZE);
 
-  // Scores
   ctx.fillStyle='white';
   ctx.font='30px Arial';
-  ctx.fillText(`Player 1: ${scores[0]}`, 10, 30);
-  ctx.fillText(`Player 2: ${scores[1]}`, 10, 70);
+  ctx.fillText(`Player 1: ${scores[0]}`,10,30);
+  ctx.fillText(`Player 2: ${scores[1]}`,10,70);
 }
 </script>
+
 </body>
 </html>
-
