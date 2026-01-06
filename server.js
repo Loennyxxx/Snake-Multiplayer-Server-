@@ -125,6 +125,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Server starten ---
 resetGame();
+
+const PORT = process.env.PORT || 3000; // 3000 nur lokal
 server.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
 });
+
+
