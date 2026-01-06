@@ -108,6 +108,3 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Falls du index.html direkt im Hauptordner hast, alternativ:
 // app.use(express.static(__dirname));
 
-server.listen(PORT, () => {
-  console.log(`Server läuft auf http://localhost:${PORT}`);
-});
